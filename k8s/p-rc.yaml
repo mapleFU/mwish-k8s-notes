@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: rs-mwish-bot
+spec:
+  replicas: 3
+  selector:
+    app: mwish-bot
+  template:
+    metadata:
+      labels:
+        app: mwish-bot
+    spec:
+      containers:
+      - name: mwish-bot
+        image: redis
+        ports:
+        - containerPort: 6379
+          name: redis-tcp

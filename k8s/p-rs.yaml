@@ -1,0 +1,19 @@
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  name: rs-mwish-bot
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: 
+  template:
+    metadata:
+      labels:
+        app: mwish-bot
+    spec:
+      containers:
+      - name: mwish-bot
+        image: redis
+        ports:
+        - containerPort: 6379
