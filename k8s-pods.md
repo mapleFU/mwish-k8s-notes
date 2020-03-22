@@ -298,87 +298,56 @@ local-volume-provisioner   1         1         1       1            1           
 > ReplicationController 或类似对象创建。
 >  • 需要在未来某个时候运行的 Job 可以通过 CronJob 资源创建。
 
-Job 这几节我就简单看了下。
+Job 这几节我就简单看了下, 假设：
 
-### Service
+* 你有一个运行中的集群
+* 你希望运行一个测试脚本
+
+比如说我们希望对一个 tidb 的数据库集群跑 go-tpc https://github.com/pingcap/go-tpc:
+
+```dockerfile
+FROM golang:alpine3.10 AS build_base
+
+RUN apk add --no-cache gcc make bash git curl
+
+ENV GO111MODULE=on
+RUN mkdir /src
+WORKDIR /src
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
+
+COPY . .
+
+RUN make build
+
+FROM alpine:3.8
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache bash curl wget
+
+COPY --from=0 /src/bin/* /bin/
+```
+
+这个时候，我们把这个 dockerfile 编译成镜像然后 push 到 docker.io 之后，可以写一个对应的 yaml 来描述 job:
 
 ```yaml
-➜  k8s cat p-svc.yaml 
-apiVersion: v1
-kind: Service
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: mwish-bot-svc
+  name: run-go-tpc
+  namespace: mwish-1k-test
 spec:
-  ports:
-  - port: 9527
-    targetPort: 6379
-  selector:
-    app: mwish-bot
+  template: 
+    metadata:
+      name: run-go-tpc
+    spec:
+      containers:
+      - name: run-go-tpc
+        image: mwish117/mwish-go-tpc
+        command: ["/bin/go-tpc", "tpcc", "-H", "10.23.255.222", "--warehouses", "1000", "-T", "200", "run"]
+      restartPolicy: Never
 ```
 
-create 之后我们去捞一下 service:
-
-```
-➜  k8s kubectl create -f p-svc.yaml 
-service/mwish-bot-svc created
-➜  k8s kubectl get svc
-NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-kubernetes      ClusterIP   10.96.0.1        <none>        443/TCP    24h
-mwish-bot-svc   ClusterIP   10.110.119.160   <none>        2379/TCP   3m18s
-```
-
-> 可以通过以下几种方法向服务发送请求:
->
-> * 显而易见的方法是 创建一个pod, 它将请求发送到服务的集群IP并记录响应。
-> * 可以通过查看pod日志检查服务的响应。
-> * 使用ssh远程 登录到其中 一 个Kubemetes节点上， 然后使用curl命令。 
-> * 可以通过kubectl exec命令在一个已经存在的pod中执行 curl命令。 我们来学习最后一 种方法-�如何在已有的pod中运行命令。
-
-来吧
-
-```
-➜  ~ kubectl get pods                              
-NAME        READY   STATUS    RESTARTS   AGE
-mwish-bot   1/1     Running   0          59m
-➜  ~ kubectl exec mwish-bot -- redis-cli get nmsl
-
-➜  ~ kubectl exec mwish-bot -- redis-cli set nmsl 10
-OK
-➜  ~ kubectl exec mwish-bot -- redis-cli get nmsl   
-10
-➜  ~ 
-```
-
-（这个超好玩啊喂）可以 curl 到对应服务，然后下列操作也可以在容器中运行 shell:
-
-```bash
-kubectl exec -it rs-mwish-bot-t4ffk bash
-```
-
-我们 describe 的时候可以发现：
-
-```
-➜  k8s kubectl describe svc mwish-
-Name:              mwish-bot-svc
-Namespace:         default
-Labels:            <none>
-Annotations:       <none>
-Selector:          app=mwish-bot
-Type:              ClusterIP
-IP:                10.105.85.34
-Port:              redis-port  9527/TCP
-TargetPort:        6379/TCP
-Endpoints:         172.17.0.6:6379,172.17.0.7:6379,172.17.0.8:6379
-Session Affinity:  None
-Events:            <none>
-```
-
-另 一方面，如果希望特定客户端产生的所有请求每次都指向同 一个 pod, 可以 设置服务的 sessionAffinity 属性为 ClientIP (而不是 None,None 是默认值)，如下面的代码所示。
-
-实际上，Service 可以把信息暴露给外部服务：
-
-* NodePort: 集群节点打开端口，设置成 NodePort, 跟外部交界
-* LoadBalance: NodePort 升级版，一个负载均衡器
-* 创建 Ingress 资源
-
-
+它会创建一个 `"${run-go-tpc}-${random}"` 的名字, 然后运行这个 Job.

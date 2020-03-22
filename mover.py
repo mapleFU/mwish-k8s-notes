@@ -96,7 +96,8 @@ def process_file(file_name: str) -> bool:
 
                 image_link = match_result.group(2)
                 print(f'image_link: {image_link}')
-                if 'nmsl.maplewish.cn' not in image_link and 'http' not in image_link and 'www' not in image_link:
+                if 'nmsl.maplewish.cn' not in image_link and 'http' not in image_link and 'www' not in image_link\
+                        and not image_link.startswith('static'):
                     # new_file_name = f'blog:{file_name_without_path}:{path_leaf(image_link)}'
                     # f_name = file_name.replace(' ', '-')
                     f_leaf = path_leaf(image_link).replace(' ', '-')

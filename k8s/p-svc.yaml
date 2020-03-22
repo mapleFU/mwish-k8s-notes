@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mwish-bot-svc-nodeport
+  name: mwish-bot-svc-redis
 spec:
   ports:
   - name: redis-port
-    port: 6400
-    targetPort: 6379
+    port: 6379
   selector:
     app: mwish-bot
