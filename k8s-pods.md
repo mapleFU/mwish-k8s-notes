@@ -9,6 +9,23 @@ keywords:
 category:
 ---
 
+### Pod
+
+pod 可以有多个 副本，比如 slave 实际上是 pod 的副本，单一的 pod 存在唯一的 node 上。
+
+- IP 分配的单位， pod 容器共享
+- pod 容器共享 volume, pod所有容器可以共享多个 docker 容器的 fs 下的 volume
+- 同一个pod 容器可以共享 IPC UTS namespace
+- pod 拥有属性 labels，key 独一无二，1当成是 map
+
+pod 信息有：
+
+- Shared storage, as Volumes
+- Networking, as a unique cluster IP address
+- Information about how to run each container, such as the container image version or specific ports to use
+
+> 我们之前说过， pod 类似逻辑主机， 在逻辑主机中运行的进程共享诸如 CPU 、 RAM、 网络接口等资源。 入们会期望进程也能共享磁盘， 但事实并非如此。 需要谨 记 一 点， pod 中的每个容器都有自己独立的文件系统， 因为文件系统来自容器镜像。
+
 ### pods
 
 ```yaml
